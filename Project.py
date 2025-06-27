@@ -13,7 +13,7 @@ import os
 
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
-newsapi = "be372e0c6d404c86bd157b015b0d1d08"
+newsapi = "Enter your api key"
 
 def speak(text):
     engine.say(text)
@@ -33,7 +33,7 @@ def speak(text):
     
 
 def aiprocess(command):
-    clinet = OpenAI(api_key="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")
+    clinet = OpenAI(api_key=" Use your own api key")
  
     completion = clinet.chat.completions.create(
     model="gpt-3.5-turbo",
