@@ -1,7 +1,7 @@
 from openai import OpenAI
 
 clinet = OpenAI(
-    api_key="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"
+    api_key="Enter your own api key"
 )
 
  
