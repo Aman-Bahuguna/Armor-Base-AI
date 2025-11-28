@@ -17,7 +17,7 @@ newsapi = "Enter your api key"
 
 def speak(text):
     engine.say(text)
-    engine.runAndWait()
+    engine.runAndWait()z``
 
 # def speak(text):
 #     tts = gTTS(text)
