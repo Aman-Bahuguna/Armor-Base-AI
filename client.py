@@ -15,3 +15,5 @@ completion = clinet.chat.completions.create(
 )
 
 print(completion.choices[0].message.content)
+
+ 

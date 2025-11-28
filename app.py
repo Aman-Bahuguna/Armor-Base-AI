@@ -1,101 +1,149 @@
-# app.py
-
 import streamlit as st
-from Project_core import processcommand # Import the core logic
+import time
+from Project_core import processcommand
 
-# --- UI Setup ---
-# The image style suggests a dark theme and custom CSS is recommended
-# to achieve the "JERVIS" look (e.g., glowing text, wave visualizer).
-# Streamlit allows for basic custom CSS to override defaults.
-
-# Set the page configuration for a darker look
+# --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="ARMOR AI Assistant",
-    layout="centered",
-    initial_sidebar_state="collapsed",
+    page_title="ARMOR SYSTEM",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for a dark, futuristic look (Partial example, full styling is complex)
+# --- CUSTOM CSS (THE OG STYLE) ---
 st.markdown("""
 <style>
-    /* Global Background and Text */
+    /* IMPORT FUTURISTIC FONT */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+    /* BACKGROUND AND MAIN THEME */
     .stApp {
-        background-color: #000408; /* Very dark blue/black */
-        color: #00FFFF; /* Cyan for text */
+        background-color: #000000;
+        background-image: radial-gradient(circle at 50% 50%, #0d1b2a 0%, #000000 100%);
+        color: #00ffff;
+        font-family: 'Orbitron', sans-serif;
     }
-    /* Header/Title */
+
+    /* GLOWING TEXT EFFECT */
     h1 {
         text-align: center;
-        color: #00FFFF;
-        text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF; /* Glowing effect */
+        color: #00ffff;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff;
+        font-size: 60px;
+        margin-bottom: 0px;
     }
-    /* Input/Output Boxes (Attempting CMD box style) */
-    .stTextInput>div>div>input {
-        color: #00FF00; /* Green for input text */
-        background-color: #0a0e14;
-        border: 1px solid #00FFFF;
+
+    /* PULSING CORE ANIMATION */
+    .core-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        margin-bottom: 20px;
     }
-    /* Command Output Box Styling (for a terminal-like feel) */
-    .cmd-box {
-        background-color: #0a0e14;
-        border: 1px solid #00FFFF;
-        padding: 10px;
-        height: 200px; /* Fixed height for the output window */
+    
+    .arc-reactor {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 2px solid #00ffff;
+        box-shadow: 0 0 20px #00ffff, inset 0 0 20px #00ffff;
+        animation: pulse 2s infinite;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle, #ffffff 10%, #00ffff 60%, #000000 100%);
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 20px #00ffff; }
+        50% { transform: scale(1.05); box-shadow: 0 0 40px #00ffff, 0 0 60px #00ffff; }
+        100% { transform: scale(0.95); box-shadow: 0 0 20px #00ffff; }
+    }
+
+    /* CHAT HISTORY (TERMINAL STYLE) */
+    .terminal-box {
+        background-color: rgba(10, 15, 20, 0.9);
+        border: 1px solid #00ffff;
+        border-radius: 5px;
+        padding: 20px;
+        height: 400px;
         overflow-y: auto;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 16px;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
     }
+
+    .user-msg {
+        color: #00ff00; /* Green for User */
+        margin-bottom: 10px;
+    }
+    
+    .armor-msg {
+        color: #00ffff; /* Cyan for Armor */
+        margin-bottom: 20px;
+        text-shadow: 0 0 5px #00ffff;
+    }
+
+    /* INPUT FIELD STYLING */
+    .stTextInput>div>div>input {
+        background-color: #050505;
+        color: #00ffff;
+        border: 1px solid #00ffff;
+        font-family: 'Share Tech Mono', monospace;
+        text-align: center;
+    }
+    
+    /* HIDE STREAMLIT ELEMENTS */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 
-# --- Title Section ---
-st.title("ARMOR") # Corresponds to the JERVIS title
-st.write("---")
+# --- HEADER & ANIMATION ---
+st.markdown("<h1>ARMOR</h1>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: center; color: #00ffff; font-family: Share Tech Mono;'>SYSTEM ONLINE // WAITING FOR INPUT</div>", unsafe_allow_html=True)
 
-# --- Voice Wave Visualizer Placeholder  ---
-# Streamlit does not have a built-in dynamic wave visualizer,
-# so we'll use a static placeholder and text.
-
-# Placeholder for the dynamic sound wave (as seen in the image)
-# For a real implementation, this would require complex frontend code (JS/React) or a custom Streamlit component.
-st.markdown("<div style='text-align:center; margin: 20px 0;'><h1><span style='color: #00FFFF; font-size: 40px;'>🔊</span></h1></div>", unsafe_allow_html=True)
-
-
-# --- Output (CMD) Box ---
-# This mimics the "CMD" box in the bottom right
-st.header("CMD")
-if 'command_history' not in st.session_state:
-    st.session_state['command_history'] = ["System initialized. Awaiting input...", ""]
-
-# Display the command history
-history_display = "\n".join(st.session_state['command_history'])
-st.markdown(f"<div class='cmd-box'>{history_display}</div>", unsafe_allow_html=True)
-
-# --- Input Section ---
-def handle_input():
-    user_input = st.session_state.text_input
-    if user_input:
-        # 1. Process the command
-        output_text = processcommand(user_input) # Call your modified logic
-
-        # 2. Update the history for display
-        st.session_state['command_history'].append(f"User: {user_input}")
-        st.session_state['command_history'].append(f"Armor: {output_text}")
-        
-        # 3. Clear the input box (Important for Streamlit)
-        st.session_state.text_input = "" 
-
-st.header("INPUT")
-st.text_input("Enter your command here:", key="text_input", on_change=handle_input, label_visibility="collapsed")
-
-
-# --- Top Menu Placeholder (SETTING, EDIT THEME, HELP) ---
-# For a basic Streamlit app, this is often placed in the sidebar or an expander.
-# To keep the image look, we'll use simple markdown placeholders.
+# The Pulsing Arc Reactor Animation
 st.markdown("""
-<div style='display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid #00FFFF;'>
-    <span style='color: #00FFFF; cursor: pointer;'>SETTING</span>
-    <span style='color: #00FFFF; cursor: pointer;'>EDIT THEME</span>
-    <span style='color: #00FFFF; cursor: pointer;'>HELP</span>
+<div class="core-container">
+    <div class="arc-reactor"></div>
 </div>
 """, unsafe_allow_html=True)
 
-# You would run this with: `streamlit run app.py`
+# --- SESSION STATE FOR CHAT ---
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+
+# --- INPUT HANDLING ---
+def submit():
+    user_input = st.session_state.input_field
+    if user_input:
+        # Add user command to history
+        st.session_state['history'].append({"role": "user", "text": user_input})
+        
+        # Process command using Project_core logic
+        response = processcommand(user_input)
+        
+        # Add AI response to history
+        st.session_state['history'].append({"role": "armor", "text": response})
+        
+        # Clear input
+        st.session_state.input_field = ""
+
+# --- DISPLAY CHAT HISTORY (Terminal Style) ---
+chat_html = ""
+# We reverse the list to show newest messages at the top (optional, or keep standard)
+for msg in reversed(st.session_state['history']):
+    if msg['role'] == "user":
+        chat_html += f"<div class='user-msg'>> USER: {msg['text']}</div>"
+    else:
+        chat_html += f"<div class='armor-msg'>> ARMOR: {msg['text']}</div>"
+
+# Render the terminal box
+st.markdown(f"<div class='terminal-box'>{chat_html}</div>", unsafe_allow_html=True)
+
+# --- INPUT BOX ---
+st.text_input("", key="input_field", on_change=submit, placeholder="ENTER COMMAND HERE...")
