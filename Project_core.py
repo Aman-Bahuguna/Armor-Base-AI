@@ -121,12 +121,25 @@ def processcommand(c):
     c = c.lower()
     response_text = ""
 
-    if "open google" in c:
-        webbrowser.open("https://google.com")
-        response_text = "Opening Google."
-    elif "open youtube" in c:
-        webbrowser.open("https://youtube.com")
-        response_text = "Opening YouTube."
+    # --- NEW: UNIVERSAL WEBSITE OPENER ---
+    # Triggered by "open [name]" or "open [name] website"
+    if c.startswith("open "):
+        # 1. Clean the command to get just the website name
+        #    e.g., "open dribbble website" -> "dribbble"
+        site_name = c.replace("open ", "").replace(" website", "").strip()
+        
+        if site_name:
+            # 2. Use DuckDuckGo's !ducky feature for instant redirect
+            #    This finds the best matching site and opens it immediately.
+            url = f"https://duckduckgo.com/?q=!ducky+{site_name}"
+            
+            # 3. Open in the System Default Browser
+            webbrowser.open(url)
+            response_text = f"Opening {site_name}."
+        else:
+            response_text = "Which website should I open?"
+
+    # --- EXISTING COMMANDS ---
     elif c.startswith("play"):
         try:
             parts = c.split(" ", 1)
@@ -138,16 +151,21 @@ def processcommand(c):
                 response_text = "Song not found in library."
         except Exception:
             response_text = "Please specify a song."
+
     elif "system" in c or "stats" in c:
         cpu, ram, disk = get_system_stats()
         response_text = f"System Status: CPU at {cpu}%. RAM at {ram}%."
+
     elif "weather" in c:
         temp, hum, wind = get_weather()
         response_text = f"It is currently {temp} degrees with {hum} percent humidity."
+
     elif "news" in c:
         headlines = get_news()
         response_text = "Top Headlines: " + ". ".join(headlines)
+
     else:
+        # Default to AI for conversation
         response_text = aiprocess(c)
 
     speak(response_text)
