@@ -4,7 +4,9 @@ import time
 import threading
 import datetime
 import asyncio
-import pywhatkit
+import webbrowser
+import pyautogui
+import urllib.parse
 import config
 import ollama
 import dateparser
@@ -17,21 +19,20 @@ class MessagingAssistant:
         self.scheduled_file = config.SCHEDULED_DB
         self.contacts = self.load_contacts()
         self.scheduled_messages = self.load_scheduled()
-        self.incoming_log = [] # Stores incoming messages for UI
+        self.incoming_log = [] 
         self.auto_reply_history = []
         
         # Flags
         self.sentiment_analysis_enabled = True
         self.global_auto_reply = False
         
-        # Start Background Threads
         self.running = True
         
         # 1. Scheduler Thread
         self.scheduler_thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self.scheduler_thread.start()
         
-        # 2. Telegram Bot Thread (Async loop handling)
+        # 2. Telegram Bot Thread
         if config.TELEGRAM_BOT_TOKEN and "YOUR_" not in config.TELEGRAM_BOT_TOKEN:
             self.telegram_thread = threading.Thread(target=self._run_telegram_bot, daemon=True)
             self.telegram_thread.start()
@@ -68,7 +69,6 @@ class MessagingAssistant:
 
     # --- LLM INTELLIGENCE ---
     def parse_command(self, text):
-        """Extracts intent, platform, recipient, message, and time from voice."""
         try:
             prompt = f"""
             Extract messaging details from command: "{text}".
@@ -88,12 +88,9 @@ class MessagingAssistant:
             start, end = content.find('{'), content.rfind('}') + 1
             if start != -1:
                 data = json.loads(content[start:end])
-                
-                # Post-process time
                 if data.get('schedule_time'):
                     dt = dateparser.parse(data['schedule_time'])
                     if dt: data['schedule_time'] = dt.isoformat()
-                
                 return data
             return None
         except Exception as e:
@@ -101,10 +98,8 @@ class MessagingAssistant:
             return None
 
     def analyze_sentiment(self, text):
-        """Returns {sentiment: pos/neu/neg, emotion: string}"""
         if not self.sentiment_analysis_enabled:
             return {"sentiment": "neutral", "emotion": "neutral"}
-        
         try:
             prompt = f"""
             Analyze sentiment of: "{text}".
@@ -132,16 +127,32 @@ class MessagingAssistant:
 
     # --- MESSAGING ACTIONS ---
     def send_whatsapp(self, phone, message):
-        """Uses PyWhatKit to send via Web. Requires Login."""
+        """Uses Desktop App via URI Scheme + PyAutoGUI."""
         try:
-            # wait_time indicates time to load web.whatsapp.com
-            pywhatkit.sendwhatmsg_instantly(phone, message, wait_time=10, tab_close=True)
-            return True, "WhatsApp command sent. Ensure Web is logged in."
+            # 1. Clean phone number (remove +, spaces) if needed, but WhatsApp URI usually likes clean international format
+            # ensure phone has no special chars except +
+            
+            # 2. Encode message
+            encoded_msg = urllib.parse.quote(message)
+            
+            # 3. Construct URL
+            # This URI scheme triggers the desktop app if installed
+            url = f"whatsapp://send?phone={phone}&text={encoded_msg}"
+            
+            # 4. Open App
+            webbrowser.open(url)
+            
+            # 5. Wait for App to Load (adjust sleep based on PC speed)
+            time.sleep(4) 
+            
+            # 6. Press Enter to Send
+            pyautogui.press('enter')
+            
+            return True, "Launched WhatsApp Desktop. Sent."
         except Exception as e:
-            return False, f"WhatsApp Error: {e}"
+            return False, f"WhatsApp Desktop Error: {e}"
 
     def send_telegram(self, chat_id, message):
-        """Uses Telegram Bot API."""
         if not config.TELEGRAM_BOT_TOKEN:
             return False, "Telegram Token missing."
         
@@ -159,7 +170,7 @@ class MessagingAssistant:
         self.scheduled_messages.append({
             "id": int(time.time()),
             "platform": platform,
-            "recipient": recipient_data, # store full contact dict or identifier
+            "recipient": recipient_data,
             "message": message,
             "time": time_iso,
             "status": "pending"
@@ -169,16 +180,13 @@ class MessagingAssistant:
 
     # --- BACKGROUND TASKS ---
     def _scheduler_loop(self):
-        """Checks every minute for due messages."""
         while self.running:
             now = datetime.datetime.now()
             for msg in self.scheduled_messages:
                 if msg['status'] == 'pending':
                     sched_time = datetime.datetime.fromisoformat(msg['time'])
                     if now >= sched_time:
-                        # Send it
                         if msg['platform'] == 'whatsapp':
-                            # Note: Automated browser opening might interrupt user, handle with care
                             self.send_whatsapp(msg['recipient']['phone'], msg['message'])
                         elif msg['platform'] == 'telegram':
                             self.send_telegram(msg['recipient']['telegram_id'], msg['message'])
@@ -188,17 +196,14 @@ class MessagingAssistant:
             time.sleep(60)
 
     def _run_telegram_bot(self):
-        """Polling listener for incoming Telegram messages."""
         async def handle_msg(update, context):
             text = update.message.text
             sender_id = str(update.message.chat_id)
             sender_name = update.message.chat.first_name
             
-            # 1. Analyze
             analysis = self.analyze_sentiment(text)
             reply = self.generate_reply(text, analysis['emotion'])
             
-            # 2. Log
             log_entry = {
                 "platform": "telegram",
                 "sender": sender_name,
@@ -208,9 +213,8 @@ class MessagingAssistant:
                 "suggested_reply": reply,
                 "time": datetime.datetime.now().strftime("%H:%M")
             }
-            self.incoming_log.insert(0, log_entry) # Prepend
+            self.incoming_log.insert(0, log_entry)
             
-            # 3. Auto-Reply Logic
             contact = None
             for c in self.contacts:
                 if c.get('telegram_id') == sender_id:

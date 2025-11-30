@@ -12,3 +12,4 @@ pywhatkit
 python-telegram-bot
 dateparser
 pandas
+pyautoguideactivate

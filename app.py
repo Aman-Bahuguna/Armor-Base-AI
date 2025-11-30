@@ -16,6 +16,7 @@ from messaging_module import MessagingAssistant
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="ARMOR AI",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -35,59 +36,181 @@ def get_messaging_bot():
 
 msg_bot = get_messaging_bot()
 
-# --- CUSTOM CSS STYLING ---
+# --- CUSTOM CSS STYLING (THEME ENGINE) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500&display=swap');
+    /* IMPORT FONTS */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+    /* --- GLOBAL APP STYLES --- */
+    .stApp {
+        background-color: #050a14;
+        background-image: radial-gradient(circle at 50% 50%, #0a1128 0%, #02040a 100%);
+        color: #e0f7fa;
+        font-family: 'Rajdhani', sans-serif;
+    }
     
-    /* General App Styling */
-    .stApp { background-color: #050a14; font-family: 'Rajdhani', sans-serif; overflow-x: hidden; }
-    header, footer {visibility: hidden;}
-    [data-testid="stSidebar"] { background-color: #0b1221; border-right: 1px solid #00e0ff33; }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Orbitron', sans-serif;
+        color: #00e0ff;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px rgba(0, 224, 255, 0.5);
+    }
+
+    /* --- SIDEBAR STYLING --- */
+    [data-testid="stSidebar"] {
+        background-color: rgba(5, 10, 20, 0.95);
+        border-right: 1px solid rgba(0, 224, 255, 0.2);
+    }
     
-    /* Glassmorphism Cards */
-    .glass-card {
-        background: rgba(13, 22, 35, 0.7);
-        border: 1px solid rgba(0, 224, 255, 0.2);
-        box-shadow: 0 0 15px rgba(0, 224, 255, 0.05);
+    /* --- GLASSMORPHISM CARDS --- */
+    .armor-card {
+        background: rgba(13, 22, 35, 0.6);
+        border: 1px solid rgba(0, 224, 255, 0.15);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border-radius: 12px;
         padding: 20px;
-        color: #e0f7fa;
-        backdrop-filter: blur(10px);
         margin-bottom: 20px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    
-    /* Reactor Animation */
+    .armor-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px rgba(0, 224, 255, 0.2);
+        border-color: rgba(0, 224, 255, 0.4);
+    }
+
+    /* --- REACTOR ANIMATION (VOICE CORE) --- */
+    .reactor-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        position: relative;
+    }
     .reactor {
-        width: 150px; height: 150px;
-        background: radial-gradient(circle, #00e0ff 0%, #000 70%);
+        width: 140px;
+        height: 140px;
+        background: radial-gradient(circle, #00e0ff 0%, transparent 70%);
         border-radius: 50%;
-        box-shadow: 0 0 30px #00e0ff;
-        margin: 0 auto 20px auto;
-        animation: pulse 3s infinite;
+        border: 4px solid rgba(0, 224, 255, 0.3);
+        box-shadow: 0 0 30px #00e0ff, inset 0 0 30px #00e0ff;
+        animation: pulse 3s infinite ease-in-out;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .reactor-core {
+        width: 80px;
+        height: 80px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 50px #00e0ff;
+        animation: flicker 0.1s infinite alternate;
+        opacity: 0.9;
     }
     @keyframes pulse {
-        0% { box-shadow: 0 0 20px #00e0ff; opacity: 0.8; }
-        50% { box-shadow: 0 0 50px #00e0ff; opacity: 1; }
-        100% { box-shadow: 0 0 20px #00e0ff; opacity: 0.8; }
+        0% { transform: scale(0.95); box-shadow: 0 0 20px #00e0ff; opacity: 0.7; }
+        50% { transform: scale(1.05); box-shadow: 0 0 60px #00e0ff; opacity: 1; }
+        100% { transform: scale(0.95); box-shadow: 0 0 20px #00e0ff; opacity: 0.7; }
     }
-    
-    /* Chat & Logs */
-    .chat-container { height: 60vh; overflow-y: auto; display: flex; flex-direction: column-reverse; padding-right: 10px; }
-    
-    /* Buttons & Inputs */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] { 
-        background-color: #0d1625; color: #00e0ff; border: 1px solid #00e0ff55; 
+    @keyframes flicker {
+        0% { opacity: 0.8; }
+        100% { opacity: 1; }
     }
-    .stButton button { 
-        width: 100%; background: rgba(0, 224, 255, 0.1); border: 1px solid #00e0ff; color: #00e0ff; font-family: 'Orbitron'; 
+
+    /* --- CUSTOM BUTTONS --- */
+    .stButton > button {
+        background: rgba(0, 224, 255, 0.05);
+        border: 1px solid #00e0ff;
+        color: #00e0ff;
+        font-family: 'Orbitron', sans-serif;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
-    .stButton button:hover { background: #00e0ff; color: #000; box-shadow: 0 0 20px #00e0ff; }
+    .stButton > button:hover {
+        background: rgba(0, 224, 255, 0.2);
+        box-shadow: 0 0 15px #00e0ff;
+        color: #fff;
+    }
+    .stButton > button:active {
+        transform: scale(0.98);
+    }
+
+    /* --- INPUT FIELDS --- */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+        background-color: rgba(10, 20, 30, 0.8);
+        border: 1px solid rgba(0, 224, 255, 0.3);
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        border-radius: 4px;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #00e0ff;
+        box-shadow: 0 0 10px rgba(0, 224, 255, 0.3);
+    }
+
+    /* --- CHAT BUBBLES --- */
+    .chat-container {
+        height: 55vh;
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column-reverse;
+        scroll-behavior: smooth;
+    }
+    .bubble {
+        padding: 12px 18px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        max-width: 80%;
+        font-size: 1.1rem;
+        line-height: 1.5;
+        position: relative;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .bubble-user {
+        background: rgba(0, 255, 136, 0.1);
+        border-right: 3px solid #00ff88;
+        align-self: flex-end;
+        text-align: right;
+        color: #ccffdd;
+        margin-left: auto;
+    }
+    .bubble-ai {
+        background: rgba(0, 224, 255, 0.1);
+        border-left: 3px solid #00e0ff;
+        align-self: flex-start;
+        text-align: left;
+        color: #d1f7ff;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- SCROLLBAR --- */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #050a14; }
+    ::-webkit-scrollbar-thumb { background: #00e0ff; border-radius: 4px; }
+
+    /* --- UTILITY CLASSES --- */
+    .status-active { color: #00ff88; text-shadow: 0 0 5px #00ff88; }
+    .status-warn { color: #ffcc00; text-shadow: 0 0 5px #ffcc00; }
+    .status-err { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
     
-    /* Sentiment Badges */
-    .badge-pos { background-color: #28a745; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
-    .badge-neg { background-color: #dc3545; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
-    .badge-neu { background-color: #6c757d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+    .stat-label { font-size: 0.9rem; color: #88c0d0; text-transform: uppercase; }
+    .stat-val { font-size: 1.5rem; font-weight: bold; font-family: 'Orbitron'; color: #fff; }
+    
+    /* Progress Bar Hack */
+    .stProgress > div > div > div > div {
+        background-color: #00e0ff;
+        box-shadow: 0 0 10px #00e0ff;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,139 +224,177 @@ def open_folder_dialog():
     root.destroy()
     return folder_path
 
+def render_stat_card(label, value, color="#00e0ff"):
+    return f"""
+    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border-left: 3px solid {color}; margin-bottom:10px;">
+        <div class="stat-label">{label}</div>
+        <div class="stat-val" style="color:{color}">{value}</div>
+    </div>
+    """
+
 # --- SIDEBAR NAVIGATION ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#00e0ff; font-family:Orbitron;'>MENU</h2>", unsafe_allow_html=True)
-    mode = st.selectbox("Select Interface", [
-        "🎙️ J.A.R.V.I.S Assistant", 
-        "📥 YouTube Downloader",
-        "✉️ Email Protocol",
-        "💬 Messaging Assistant"
-    ])
+    st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h1 style='font-size: 2em; margin:0;'>ARMOR</h1><small style='color:#00e0ff; letter-spacing:3px;'>SYSTEMS ONLINE</small></div>", unsafe_allow_html=True)
+    
+    st.markdown("### NAVIGATION")
+    mode = st.radio(
+        "Select Module", 
+        ["🎙️ COMMAND CENTER", "📥 DOWNLOADER", "✉️ EMAIL PROTOCOL", "💬 MESSAGING"],
+        label_visibility="collapsed"
+    )
+    
     st.divider()
-    st.markdown("<div style='color:#666; font-size:12px;'>ARMOR SYSTEMS v4.0</div>", unsafe_allow_html=True)
+    
+    # Minimal System Stats in Sidebar
+    cpu, ram, disk = get_system_stats()
+    st.markdown(f"**SYS DIAGNOSTICS**", unsafe_allow_html=True)
+    st.markdown(f"<small>CPU LOAD</small>", unsafe_allow_html=True)
+    st.progress(cpu / 100)
+    st.markdown(f"<small>RAM USAGE</small>", unsafe_allow_html=True)
+    st.progress(ram / 100)
+    
+    st.divider()
+    st.markdown("<div style='text-align:center; color:#666; font-size:10px;'>ARMOR AI v5.0<br>SECURE CONNECTION</div>", unsafe_allow_html=True)
 
-# --- TOP HEADER ---
-curr_time = datetime.datetime.now().strftime("%H:%M")
-curr_date = datetime.datetime.now().strftime("%a, %b %d")
-c1, c2, c3 = st.columns([1, 4, 1])
-with c1: st.markdown(f"<div style='color:#00e0ff; font-family:Orbitron;'>SYS: ONLINE</div>", unsafe_allow_html=True)
-with c3: st.markdown(f"<div style='text-align:right; color:#88c0d0;'>{curr_time} | {curr_date}</div>", unsafe_allow_html=True)
-st.divider()
+# --- HEADER SECTION ---
+col_head1, col_head2 = st.columns([3, 1])
+with col_head1:
+    st.markdown(f"## {mode}")
+with col_head2:
+    curr_time = datetime.datetime.now().strftime("%H:%M:%S")
+    curr_date = datetime.datetime.now().strftime("%a, %d %b %Y")
+    st.markdown(f"""
+    <div style='text-align:right; font-family:"Orbitron"; color:#00e0ff;'>
+        <div style="font-size:1.5em;">{curr_time}</div>
+        <div style="font-size:0.8em; color:#88c0d0;">{curr_date}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.write("") # Spacer
 
 # ==========================================
-# MODE 1: J.A.R.V.I.S ASSISTANT (Core)
+# MODULE 1: J.A.R.V.I.S COMMAND CENTER
 # ==========================================
-if mode == "🎙️ J.A.R.V.I.S Assistant":
+if mode == "🎙️ COMMAND CENTER":
     if 'history' not in st.session_state: st.session_state['history'] = []
     
-    # Live Data
-    cpu, ram, disk = get_system_stats()
-    temp, hum, wind = get_weather()
-
-    col1, col2, col3 = st.columns([1, 1.5, 1])
+    # Layout: Left (Reactor/Controls) | Right (Chat Log/Info)
+    c1, c2 = st.columns([1, 1.5])
     
-    # Left: Diagnostics
-    with col1:
+    with c1:
+        # Reactor Visual
+        st.markdown('<div class="armor-card"><div class="reactor-container"><div class="reactor"><div class="reactor-core"></div></div></div></div>', unsafe_allow_html=True)
+        
+        # Status
+        temp, hum, wind = get_weather()
         st.markdown(f"""
-        <div class="glass-card">
-            <h4 style="color:#00e0ff; margin-top:0;">DIAGNOSTICS</h4>
-            <p>CPU: <span style="color:#ff5555">{cpu}%</span></p>
-            <div style="height:5px; background:#111; width:100%; margin-bottom:10px;"><div style="height:100%; width:{cpu}%; background:#ff5555;"></div></div>
-            <p>RAM: <span style="color:#55ff55">{ram}%</span></p>
-            <div style="height:5px; background:#111; width:100%; margin-bottom:10px;"><div style="height:100%; width:{ram}%; background:#55ff55;"></div></div>
-            <br>
-            <h4 style="color:#00e0ff;">ENV</h4>
-            <p style="font-size:24px; margin:0;">{temp}°C</p>
-            <small style="color:#aaa">H: {hum}% | W: {wind}km/h</small>
+        <div class="armor-card">
+            <div style="display:flex; justify-content:space-between;">
+                {render_stat_card("TEMP", f"{temp}°C", "#ffcc00")}
+                {render_stat_card("HUMIDITY", f"{hum}%", "#00ff88")}
+                {render_stat_card("WIND", f"{wind} km/h", "#00e0ff")}
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("CLEAR LOGS"):
-            st.session_state['history'] = []
-            st.rerun()
 
-    # Center: Voice Interface
-    with col2:
-        st.markdown('<div class="reactor"></div>', unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; color:#00e0ff; letter-spacing:2px; margin-bottom:10px;'>VOICE INTERFACE</div>", unsafe_allow_html=True)
-        
-        if st.button("🎙️ ACTIVATE MICROPHONE"):
-            with st.spinner("Listening..."):
+        # Controls
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        st.markdown("#### VOICE INPUT")
+        if st.button("🎙️ INITIATE LISTENING SEQUENCE", use_container_width=True):
+            with st.spinner("LISTENING..."):
                 text = listen_input()
                 if text:
                     response = processcommand(text)
                     st.session_state['history'].append((text, response))
                     st.rerun()
                 else:
-                    st.warning("No audio detected.")
-
+                    st.warning("NO AUDIO DETECTED")
+        
+        st.markdown("#### MANUAL OVERRIDE")
         def submit():
             txt = st.session_state.txt_input
             if txt:
                 response = processcommand(txt)
                 st.session_state['history'].append((txt, response))
                 st.session_state.txt_input = ""
-        st.text_input("MANUAL OVERRIDE", key="txt_input", on_change=submit, placeholder="Type command...")
+        
+        st.text_input("ENTER COMMAND", key="txt_input", on_change=submit, placeholder="Type command here...")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.button("PURGE LOGS"):
+            st.session_state['history'] = []
+            st.rerun()
 
-    # Right: Logs
-    with col3:
-        st.markdown('<div class="glass-card" style="height: 65vh;">', unsafe_allow_html=True)
-        st.markdown('<h4 style="color:#00e0ff; margin-top:0;">COMMUNICATION LOG</h4>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="armor-card" style="height: 70vh;">', unsafe_allow_html=True)
+        st.markdown("#### COMMUNICATION LOG")
+        
+        # Custom HTML Chat Render
         chat_html = '<div class="chat-container">'
         for q, a in reversed(st.session_state['history']):
-            chat_html += f'<div class="msg-user">CMD: {q}</div><div class="msg-ai">>> {a}</div><hr style="border-color:#112;">'
+            chat_html += f'<div class="bubble bubble-user">{q}</div>'
+            chat_html += f'<div class="bubble bubble-ai">{a}</div>'
         chat_html += '</div>'
+        
         st.markdown(chat_html, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODE 2: YOUTUBE DOWNLOADER
+# MODULE 2: YOUTUBE DOWNLOADER
 # ==========================================
-elif mode == "📥 YouTube Downloader":
-    st.markdown("<h2 style='text-align:center; color:#00e0ff;'>SECURE DOWNLOAD PROTOCOL</h2>", unsafe_allow_html=True)
-    d_col1, d_col2, d_col3 = st.columns([1, 2, 1])
+elif mode == "📥 DOWNLOADER":
+    c_main = st.container()
     
-    with d_col2:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    with c_main:
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        col_input, col_opt = st.columns([2, 1])
         
-        video_url = st.text_input("TARGET URL (YouTube)", placeholder="https://youtube.com/watch?v=...")
-        format_type = st.radio("DOWNLOAD TYPE", ["Video + Audio", "Audio Only (MP3)"], horizontal=True)
+        with col_input:
+            video_url = st.text_input("TARGET URL (YouTube)", placeholder="https://youtube.com/watch?v=...")
         
-        if format_type == "Video + Audio":
-            resolution = st.selectbox("RESOLUTION", ["Best Available", "1080p", "720p", "480p", "360p"])
-        else:
-            resolution = st.selectbox("AUDIO QUALITY", ["Best Quality (320kbps)", "Standard (128kbps)"])
-
-        col_path, col_btn = st.columns([3, 1])
-        with col_path:
+        with col_opt:
+            format_type = st.selectbox("FORMAT TYPE", ["Video + Audio", "Audio Only (MP3)"])
+        
+        c_res, c_path = st.columns([1, 2])
+        with c_res:
+            if format_type == "Video + Audio":
+                resolution = st.selectbox("RESOLUTION", ["Best Available", "1080p", "720p", "480p"])
+            else:
+                resolution = st.selectbox("BITRATE", ["Best Quality (320kbps)", "Standard (128kbps)"])
+        
+        with c_path:
             if 'download_path' not in st.session_state:
                 st.session_state['download_path'] = os.getcwd()
-            st.text_input("SAVE LOCATION", value=st.session_state['download_path'], disabled=True)
-        with col_btn:
-            st.write("") 
-            st.write("") 
-            if st.button("📂"):
-                selected_folder = open_folder_dialog()
-                if selected_folder:
-                    st.session_state['download_path'] = selected_folder
-                    st.rerun()
+            
+            c_p_text, c_p_btn = st.columns([3, 1])
+            with c_p_text:
+                st.text_input("OUTPUT PATH", value=st.session_state['download_path'], disabled=True, label_visibility="collapsed")
+            with c_p_btn:
+                if st.button("📂 BROWSE"):
+                    path = open_folder_dialog()
+                    if path: 
+                        st.session_state['download_path'] = path
+                        st.rerun()
 
-        if st.button("INITIATE DOWNLOAD", type="primary"):
+        st.write("")
+        if st.button("INITIATE DOWNLOAD SEQUENCE", type="primary", use_container_width=True):
             if video_url:
-                status_text = st.empty()
-                progress_bar = st.progress(0)
+                status_box = st.empty()
+                prog_bar = st.progress(0)
+                
                 try:
-                    status_text.info("Analyzing Metadata...")
+                    status_box.info("ANALYZING METADATA...")
+                    
                     def progress_hook(d):
                         if d['status'] == 'downloading':
                             try:
                                 p = d.get('_percent_str', '0%').replace('%','')
-                                progress_bar.progress(float(p) / 100)
-                                status_text.info(f"Downloading: {d.get('_percent_str')} | Speed: {d.get('_speed_str')}")
+                                prog_bar.progress(float(p) / 100)
+                                status_box.markdown(f"<span style='color:#00e0ff'>DOWNLOADING:</span> {d.get('_percent_str')} | SPEED: {d.get('_speed_str')}", unsafe_allow_html=True)
                             except: pass
                         if d['status'] == 'finished':
-                            progress_bar.progress(100)
-                            status_text.success("Download Complete! Processing...")
+                            prog_bar.progress(100)
+                            status_box.success("DOWNLOAD COMPLETE. PROCESSING...")
 
                     ydl_opts = {
                         'outtmpl': f"{st.session_state['download_path']}/%(title)s.%(ext)s",
@@ -250,305 +411,239 @@ elif mode == "📥 YouTube Downloader":
                         elif resolution == "1080p": ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
                         elif resolution == "720p": ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
                         elif resolution == "480p": ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
-                        elif resolution == "360p": ydl_opts['format'] = 'bestvideo[height<=360]+bestaudio/best[height<=360]'
 
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([video_url])
                     st.balloons()
-                    status_text.success(f"Saved to: {st.session_state['download_path']}")
+                    status_box.success(f"FILE SECURED AT: {st.session_state['download_path']}")
                 except Exception as e:
-                    status_text.error(f"Error: {str(e)}")
+                    status_box.error(f"DOWNLOAD ERROR: {str(e)}")
             else:
-                st.warning("Please enter a valid URL.")
+                st.warning("INVALID TARGET URL")
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODE 3: EMAIL PROTOCOL
+# MODULE 3: EMAIL PROTOCOL
 # ==========================================
-elif mode == "✉️ Email Protocol":
-    st.markdown("<h2 style='text-align:center; color:#00e0ff;'>SECURE COMMUNICATIONS LINK</h2>", unsafe_allow_html=True)
-    
-    # Init Email Draft
+elif mode == "✉️ EMAIL PROTOCOL":
     if 'email_draft' not in st.session_state:
         st.session_state['email_draft'] = {"to": "", "subject": "", "body": ""}
 
+    # Styled Tabs
     tab1, tab2, tab3 = st.tabs(["COMPOSE", "INBOX", "CONTACTS"])
 
-    # --- COMPOSE ---
     with tab1:
-        e_col1, e_col2 = st.columns([1, 2])
-        
-        with e_col1:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.subheader("Voice Command")
-            st.info("Try: 'Send an email to John about the project'")
-            
-            if st.button("🎙️ DICTATE EMAIL"):
-                with st.spinner("Listening..."):
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+            st.markdown("#### VOICE COMMAND")
+            st.info("Example: 'Send an email to John about the project'")
+            if st.button("🎙️ DICTATE", use_container_width=True):
+                with st.spinner("LISTENING..."):
                     cmd = listen_input()
                     if cmd:
-                        st.success(f"Recognized: {cmd}")
                         parsed = st.session_state.email_bot.parse_voice_command(cmd)
                         if parsed:
                             st.session_state['email_draft']['to'] = parsed.get('recipient_email') or parsed.get('recipient_name') or ""
                             st.session_state['email_draft']['subject'] = parsed.get('subject') or ""
                             st.session_state['email_draft']['body'] = parsed.get('body') or ""
                             st.rerun()
-                        else: st.error("Could not parse email intent.")
-                    else: st.warning("No audio detected.")
+                        else: st.error("PARSING FAILED")
             st.markdown('</div>', unsafe_allow_html=True)
-
-        with e_col2:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.subheader("Secure Transmission Form")
+        
+        with c2:
+            st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+            to_addr = st.text_input("RECIPIENT", value=st.session_state['email_draft']['to'], placeholder="target@domain.com")
             
-            to_addr = st.text_input("RECIPIENT", value=st.session_state['email_draft']['to'], placeholder="name@example.com")
-            
-            # Subject and AI Generator
-            col_sub, col_gen = st.columns([3, 1])
-            with col_sub:
+            c_sub, c_gen = st.columns([3, 1])
+            with c_sub:
                 subj = st.text_input("SUBJECT", value=st.session_state['email_draft']['subject'])
-            with col_gen:
-                st.write("") 
-                st.write("") 
-                if st.button("✨ AUTO-GEN", help="Generate email body from Subject"):
+            with c_gen:
+                st.write("")
+                st.write("")
+                if st.button("✨ AUTO-GEN"):
                     if subj:
-                        with st.spinner("Generating..."):
+                        with st.spinner("GENERATING..."):
                             body_gen = st.session_state.email_bot.generate_email_body(subj)
                             st.session_state['email_draft']['body'] = body_gen
                             st.rerun()
-                    else: st.warning("Enter subject first.")
-
+            
             body = st.text_area("BODY", value=st.session_state['email_draft']['body'], height=200)
             
-            # Update State
-            st.session_state['email_draft']['to'] = to_addr
-            st.session_state['email_draft']['subject'] = subj
-            st.session_state['email_draft']['body'] = body
-
-            if st.button("SEND TRANSMISSION", type="primary"):
+            # Sync state
+            st.session_state['email_draft'].update({"to": to_addr, "subject": subj, "body": body})
+            
+            if st.button("TRANSMIT MESSAGE", type="primary", use_container_width=True):
                 if to_addr and body:
-                    with st.spinner("Sending..."):
+                    with st.spinner("ENCRYPTING AND SENDING..."):
                         success, msg = st.session_state.email_bot.send_email(to_addr, subj, body)
                         if success:
                             st.success(msg)
                             st.balloons()
                             st.session_state['email_draft'] = {"to": "", "subject": "", "body": ""}
                         else: st.error(msg)
-                else: st.warning("Fields required.")
+                else: st.warning("MISSING PARAMETERS")
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- INBOX ---
     with tab2:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        if st.button("🔄 REFRESH INBOX"):
-            with st.spinner("Fetching..."):
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        if st.button("🔄 SYNCHRONIZE INBOX"):
+            with st.spinner("FETCHING DATA..."):
                 emails = st.session_state.email_bot.fetch_recent_emails(limit=5)
                 if emails:
                     for e in emails:
-                        st.markdown(f"**From:** {e['sender']}")
-                        st.markdown(f"**Subject:** {e['subject']}")
-                        st.text(f"{e['preview']}")
-                        st.divider()
-                else: st.info("No new emails.")
+                        st.markdown(f"""
+                        <div style="border-bottom:1px solid #333; padding:10px 0;">
+                            <strong style="color:#00ff88">{e['sender']}</strong><br>
+                            <span style="color:#00e0ff">{e['subject']}</span><br>
+                            <small style="color:#aaa">{e['preview']}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else: st.info("INBOX EMPTY OR DISCONNECTED")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- CONTACTS ---
     with tab3:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        c_col1, c_col2 = st.columns(2)
-        with c_col1:
-            st.subheader("Add Contact")
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        col_add, col_list = st.columns(2)
+        with col_add:
+            st.markdown("#### ADD CONTACT")
             n = st.text_input("Name")
             e = st.text_input("Email")
-            if st.button("SAVE"):
+            if st.button("SAVE CONTACT"):
                 if n and e:
                     res = st.session_state.email_bot.add_contact(n, e)
                     st.success(res)
                     st.rerun()
-        with c_col2:
-            st.subheader("Directory")
+        with col_list:
+            st.markdown("#### DIRECTORY")
             contacts = st.session_state.email_bot.load_contacts()
             if contacts:
-                for c in contacts: st.code(f"{c['name']}: {c['email']}")
-            else: st.info("Empty.")
+                for c in contacts:
+                    st.markdown(f"`{c['name'].upper()}` : {c['email']}")
+            else: st.info("DATABASE EMPTY")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODE 4: MESSAGING ASSISTANT (NEW)
+# MODULE 4: MESSAGING
 # ==========================================
-elif mode == "💬 Messaging Assistant":
-    st.markdown("<h2 style='text-align:center; color:#00e0ff;'>MESSAGING COMMAND CENTER</h2>", unsafe_allow_html=True)
-    
-    # Tabs for Messaging Features
-    tab1, tab2, tab3, tab4 = st.tabs(["SEND / SCHEDULE", "INBOX (Telegram)", "AUTO-REPLY LOG", "CONFIG"])
+elif mode == "💬 MESSAGING":
+    tab1, tab2, tab3, tab4 = st.tabs(["SEND", "FEED", "LOGS", "CONFIG"])
 
-    # --- TAB 1: SEND & SCHEDULE ---
     with tab1:
-        col_voice, col_manual = st.columns([1, 2])
-        
-        with col_voice:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.subheader("Voice Command")
-            st.info("Example: 'Send a WhatsApp to Mom saying I will be late'")
-            st.info("Example: 'Schedule a Telegram to Rohan tomorrow at 9 AM'")
-            
-            if st.button("🎙️ DICTATE COMMAND"):
-                with st.spinner("Processing..."):
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+            st.markdown("#### VOICE COMMAND")
+            st.info("Ex: 'Send WhatsApp to Mom saying I am safe'")
+            if st.button("🎙️ DICTATE", use_container_width=True):
+                with st.spinner("PROCESSING..."):
                     cmd = listen_input()
                     if cmd:
-                        st.success(f"Heard: {cmd}")
                         parsed = msg_bot.parse_command(cmd)
-                        
                         if parsed:
-                            st.json(parsed) # Debug view
-                            
-                            # Intent: Send Immediately
                             if parsed['intent'] == 'send':
                                 contact = msg_bot.get_contact(parsed.get('recipient_name', ''))
-                                if not contact: 
-                                    st.error(f"Contact '{parsed.get('recipient_name')}' not found.")
+                                if not contact: st.error("CONTACT NOT FOUND")
                                 else:
                                     if parsed['platform'] == 'whatsapp' and contact.get('phone'):
                                         ok, m = msg_bot.send_whatsapp(contact['phone'], parsed['message_body'])
-                                        if ok: st.success(m)
-                                        else: st.error(m)
+                                        st.success(m) if ok else st.error(m)
                                     elif parsed['platform'] == 'telegram' and contact.get('telegram_id'):
                                         ok, m = msg_bot.send_telegram(contact['telegram_id'], parsed['message_body'])
-                                        if ok: st.success(m)
-                                        else: st.error(m)
-                                    else:
-                                        st.error("Missing phone/ID for this platform.")
-                            
-                            # Intent: Schedule
+                                        st.success(m) if ok else st.error(m)
                             elif parsed['intent'] == 'schedule':
                                 contact = msg_bot.get_contact(parsed.get('recipient_name', ''))
                                 if contact:
-                                    msg_bot.schedule_message(
-                                        parsed['platform'], 
-                                        contact, 
-                                        parsed['message_body'], 
-                                        parsed['schedule_time']
-                                    )
-                                    st.success(f"Message Scheduled for {parsed['schedule_time']}")
-                                else: st.error("Contact not found.")
-                        else:
-                            st.error("Could not understand the command.")
-                    else:
-                        st.warning("No audio detected.")
+                                    msg_bot.schedule_message(parsed['platform'], contact, parsed['message_body'], parsed['schedule_time'])
+                                    st.success(f"SCHEDULED: {parsed['schedule_time']}")
+                                else: st.error("CONTACT NOT FOUND")
+                        else: st.error("INTENT UNRECOGNIZED")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        with col_manual:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.subheader("Manual Console")
+        with c2:
+            st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+            st.markdown("#### MANUAL CONSOLE")
+            m_plat = st.selectbox("PLATFORM", ["WhatsApp", "Telegram"])
+            c_names = [c['name'] for c in msg_bot.contacts]
+            m_cont = st.selectbox("CONTACT", c_names if c_names else ["No contacts"])
+            m_body = st.text_area("MESSAGE")
             
-            # Form
-            m_platform = st.selectbox("Platform", ["WhatsApp", "Telegram"])
-            # Contact List
-            contact_names = [c['name'] for c in msg_bot.contacts]
-            m_contact = st.selectbox("Contact", contact_names if contact_names else ["No contacts"])
-            
-            m_msg = st.text_area("Message Body")
-            
-            # Scheduling Options
-            do_schedule = st.checkbox("Schedule for later")
+            do_sched = st.checkbox("SCHEDULE TRANSMISSION")
             m_time = None
-            if do_schedule:
-                c1, c2 = st.columns(2)
-                d = c1.date_input("Date")
-                t = c2.time_input("Time")
+            if do_sched:
+                cd, ct = st.columns(2)
+                d = cd.date_input("Date")
+                t = ct.time_input("Time")
                 m_time = datetime.datetime.combine(d, t).isoformat()
             
-            if st.button("EXECUTE OPERATION"):
-                if not msg_bot.contacts:
-                    st.error("Please add contacts in config/contacts.json first.")
+            if st.button("EXECUTE", type="primary", use_container_width=True):
+                c_data = msg_bot.get_contact(m_cont)
+                if not c_data: st.error("INVALID CONTACT")
                 else:
-                    contact_data = msg_bot.get_contact(m_contact)
-                    if not contact_data: 
-                        st.error("Invalid contact.")
+                    if do_sched:
+                        msg_bot.schedule_message(m_plat.lower(), c_data, m_body, m_time)
+                        st.success("TRANSMISSION SCHEDULED")
                     else:
-                        if do_schedule:
-                            msg_bot.schedule_message(m_platform.lower(), contact_data, m_msg, m_time)
-                            st.success("Message Scheduled.")
+                        if m_plat == "WhatsApp":
+                            ok, txt = msg_bot.send_whatsapp(c_data.get('phone'), m_body)
                         else:
-                            if m_platform == "WhatsApp":
-                                ok, txt = msg_bot.send_whatsapp(contact_data.get('phone'), m_msg)
-                            else:
-                                ok, txt = msg_bot.send_telegram(contact_data.get('telegram_id'), m_msg)
-                            
-                            if ok: st.success(txt)
-                            else: st.error(txt)
+                            ok, txt = msg_bot.send_telegram(c_data.get('telegram_id'), m_body)
+                        st.success(txt) if ok else st.error(txt)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- TAB 2: INBOX & SENTIMENT ---
     with tab2:
-        st.markdown("### Live Telegram Feed & Sentiment Analysis")
-        # In a real deployment, we'd use st.empty() or streamlit-autorefresh.
-        # Here we rely on a manual refresh button for simplicity.
-        if st.button("REFRESH FEED"):
-            st.rerun()
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        col_h, col_r = st.columns([4, 1])
+        col_h.markdown("#### LIVE TELEGRAM FEED")
+        if col_r.button("REFRESH"): st.rerun()
         
         if msg_bot.incoming_log:
             for item in msg_bot.incoming_log:
-                # Color code sentiment
-                s_color = "badge-neu"
-                if item['analysis']['sentiment'] == 'positive': s_color = "badge-pos"
-                elif item['analysis']['sentiment'] == 'negative': s_color = "badge-neg"
+                s_color = "#6c757d"
+                if item['analysis']['sentiment'] == 'positive': s_color = "#28a745"
+                elif item['analysis']['sentiment'] == 'negative': s_color = "#dc3545"
                 
-                with st.container():
-                    st.markdown(f"""
-                    <div class="glass-card" style="padding:15px; margin-bottom:15px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h4 style="margin:0; color:#00ff99;">{item['sender']}</h4>
-                            <small style="color:#aaa;">{item['time']}</small>
-                        </div>
-                        <p style="margin:10px 0; font-size:1.1em;">"{item['text']}"</p>
-                        <hr style="border-color:#333;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span class="{s_color}">{item['analysis']['emotion'].upper()}</span>
-                            <span style="color:#aaa;">AI Suggestion:</span>
-                            <span style="color:#00e0ff; font-style:italic;">{item['suggested_reply']}</span>
-                        </div>
+                st.markdown(f"""
+                <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:10px; border-left:3px solid {s_color}">
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong style="color:#00ff99">{item['sender']}</strong>
+                        <small style="color:#aaa">{item['time']}</small>
                     </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # One-click reply
-                    if st.button(f"Send Reply to {item['sender']}", key=f"rep_{item['time']}"):
-                        msg_bot.send_telegram(item['id'], item['suggested_reply'])
-                        st.success("Reply Sent.")
-        else:
-            st.info("No incoming messages logged yet. (Ensure Telegram Bot is running and receiving messages).")
+                    <p style="margin:5px 0;">"{item['text']}"</p>
+                    <div style="font-size:0.8em; color:#88c0d0; margin-top:5px;">
+                        DETECTED: <span style="color:{s_color}">{item['analysis']['emotion'].upper()}</span> | 
+                        SUGGESTION: <em>{item['suggested_reply']}</em>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button(f"SEND REPLY TO {item['sender']}", key=f"rep_{item['time']}"):
+                    msg_bot.send_telegram(item['id'], item['suggested_reply'])
+                    st.success("REPLY SENT")
+        else: st.info("NO DATA STREAM")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- TAB 3: LOGS ---
     with tab3:
-        st.markdown("### Auto-Reply History")
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        st.markdown("#### AUTO-REPLY LOGS")
         if msg_bot.auto_reply_history:
-            df = pd.DataFrame(msg_bot.auto_reply_history)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("No auto-replies have been triggered yet.")
+            st.dataframe(pd.DataFrame(msg_bot.auto_reply_history), use_container_width=True)
+        else: st.caption("NO ACTIVITY RECORDED")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- TAB 4: CONFIG ---
     with tab4:
-        st.subheader("Global Settings")
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        st.markdown("#### PROTOCOL SETTINGS")
+        c1, c2 = st.columns(2)
+        with c1:
+            msg_bot.sentiment_analysis_enabled = st.toggle("SENTIMENT ANALYSIS", value=True)
+        with c2:
+            msg_bot.global_auto_reply = st.toggle("GLOBAL AUTO-REPLY", value=False)
+            if msg_bot.global_auto_reply: st.warning("WARNING: AUTONOMOUS MODE ACTIVE")
         
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.write("**Sentiment AI**")
-            msg_bot.sentiment_analysis_enabled = st.toggle("Enable Sentiment Analysis", value=True)
-            st.caption("Uses local LLM to detect emotions in incoming messages.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        with col_c2:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.write("**Auto-Reply**")
-            msg_bot.global_auto_reply = st.toggle("Global Auto-Reply", value=False)
-            st.caption("WARNING: This will automatically send replies without confirmation.")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.subheader("Scheduled Messages Database")
+        st.markdown("#### PENDING SCHEDULE")
         if msg_bot.scheduled_messages:
-            st.dataframe(pd.DataFrame(msg_bot.scheduled_messages))
-        else:
-            st.caption("No pending messages.")
+            st.dataframe(pd.DataFrame(msg_bot.scheduled_messages), use_container_width=True)
+        else: st.caption("QUEUE EMPTY")
+        st.markdown('</div>', unsafe_allow_html=True)
