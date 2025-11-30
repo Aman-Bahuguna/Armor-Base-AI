@@ -1,0 +1,34 @@
+{
+    "apps": [
+        {
+            "name": "Chrome",
+            "aliases": ["google chrome", "browser", "internet"],
+            "path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "process_name": "chrome.exe"
+        },
+        {
+            "name": "Notepad",
+            "aliases": ["text editor", "note"],
+            "path": "C:\\Windows\\System32\\notepad.exe",
+            "process_name": "notepad.exe"
+        },
+        {
+            "name": "Calculator",
+            "aliases": ["calc"],
+            "path": "C:\\Windows\\System32\\calc.exe",
+            "process_name": "CalculatorApp.exe"
+        },
+        {
+            "name": "VS Code",
+            "aliases": ["code", "visual studio code", "editor"],
+            "path": "C:\\Users\\User\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+            "process_name": "Code.exe"
+        },
+        {
+            "name": "Spotify",
+            "aliases": ["music"],
+            "path": "C:\\Users\\User\\AppData\\Roaming\\Spotify\\Spotify.exe",
+            "process_name": "Spotify.exe"
+        }
+    ]
+}
