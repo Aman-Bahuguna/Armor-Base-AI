@@ -1,16 +1,20 @@
 {
     "contacts": [
         {
-            "name": "john",
-            "email": "john.doe@example.com"
+            "name": "Aman Bahuguna",
+            "email": "bahugunaaman09@gmail.com",
+            "phone": "+917404047565",
+            "telegram_id": "@StormyyyX",
+            "auto_reply": true,
+            "reply_mode": "suggestion"
         },
         {
-            "name": "mom",
-            "email": "mom@example.com"
-        },
-        {
-            "name": "aman",
-            "email": "binrec@gmail.com"
+            "name": "rohan",
+            "email": "rohan@example.com",
+            "phone": "+919876543210",
+            "telegram_id": "rohan_username",
+            "auto_reply": false,
+            "reply_mode": "suggestion"
         }
     ]
 }
