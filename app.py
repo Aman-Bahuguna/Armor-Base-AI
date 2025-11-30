@@ -6,6 +6,8 @@ import yt_dlp
 import tkinter as tk
 from tkinter import filedialog
 from Project_core import processcommand, listen_input, get_system_stats, get_weather
+# Import the new module
+from email_module import EmailAssistant
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -13,6 +15,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- INIT EMAIL ASSISTANT ---
+if 'email_bot' not in st.session_state:
+    st.session_state.email_bot = EmailAssistant()
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -42,12 +48,7 @@ st.markdown("""
         margin: 0 auto 20px auto;
         animation: pulse 3s infinite;
     }
-    @keyframes pulse {
-        0% { box-shadow: 0 0 20px #00e0ff; opacity: 0.8; }
-        50% { box-shadow: 0 0 50px #00e0ff; opacity: 1; }
-        100% { box-shadow: 0 0 20px #00e0ff; opacity: 0.8; }
-    }
-
+    
     .chat-container { height: 60vh; overflow-y: auto; display: flex; flex-direction: column-reverse; padding-right: 10px; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #050a14; }
@@ -56,7 +57,7 @@ st.markdown("""
     .msg-user { text-align: right; color: #00ff99; margin: 5px 0; font-size: 1.1rem; }
     .msg-ai { text-align: left; color: #00e0ff; margin: 5px 0; border-left: 3px solid #00e0ff; padding-left: 10px; font-size: 1.1rem; }
     
-    .stTextInput input { background-color: #0d1625; color: #00e0ff; border: 1px solid #00e0ff55; }
+    .stTextInput input, .stTextArea textarea { background-color: #0d1625; color: #00e0ff; border: 1px solid #00e0ff55; }
     .stButton button { width: 100%; background: rgba(0, 224, 255, 0.1); border: 1px solid #00e0ff; color: #00e0ff; font-family: 'Orbitron'; }
     .stButton button:hover { background: #00e0ff; color: #000; box-shadow: 0 0 20px #00e0ff; }
 </style>
@@ -64,10 +65,9 @@ st.markdown("""
 
 # --- HELPER FUNCTIONS ---
 def open_folder_dialog():
-    """Opens a native folder selection dialog on the server side (Localhost)."""
     root = tk.Tk()
-    root.withdraw() # Hide the main window
-    root.wm_attributes('-topmost', 1) # Make dialog appear on top
+    root.withdraw() 
+    root.wm_attributes('-topmost', 1) 
     folder_path = filedialog.askdirectory(master=root)
     root.destroy()
     return folder_path
@@ -75,9 +75,13 @@ def open_folder_dialog():
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("<h2 style='color:#00e0ff; font-family:Orbitron;'>MENU</h2>", unsafe_allow_html=True)
-    mode = st.selectbox("Select Interface", ["🎙️ J.A.R.V.I.S Assistant", "📥 YouTube Downloader"])
+    mode = st.selectbox("Select Interface", [
+        "🎙️ J.A.R.V.I.S Assistant", 
+        "📥 YouTube Downloader",
+        "✉️ Email Protocol"
+    ])
     st.divider()
-    st.markdown("<div style='color:#666; font-size:12px;'>ARMOR SYSTEMS v2.5</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#666; font-size:12px;'>ARMOR SYSTEMS v3.1</div>", unsafe_allow_html=True)
 
 # --- HEADER ---
 curr_time = datetime.datetime.now().strftime("%H:%M")
@@ -148,67 +152,53 @@ if mode == "🎙️ J.A.R.V.I.S Assistant":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# INTERFACE 2: YOUTUBE DOWNLOADER (UPDATED)
+# INTERFACE 2: YOUTUBE DOWNLOADER
 # ==========================================
 elif mode == "📥 YouTube Downloader":
     st.markdown("<h2 style='text-align:center; color:#00e0ff;'>SECURE DOWNLOAD PROTOCOL</h2>", unsafe_allow_html=True)
-    
     d_col1, d_col2, d_col3 = st.columns([1, 2, 1])
     
     with d_col2:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        
-        # 1. URL Input
         video_url = st.text_input("TARGET URL (YouTube)", placeholder="https://youtube.com/watch?v=...")
-        
-        # 2. Select Download Type
         format_type = st.radio("DOWNLOAD TYPE", ["Video + Audio", "Audio Only (MP3)"], horizontal=True)
         
-        # 3. Resolution / Quality Selection
         if format_type == "Video + Audio":
             resolution = st.selectbox("RESOLUTION", ["Best Available", "1080p", "720p", "480p", "360p"])
         else:
             resolution = st.selectbox("AUDIO QUALITY", ["Best Quality (320kbps)", "Standard (128kbps)"])
 
-        # 4. Save Location Picker
         col_path, col_btn = st.columns([3, 1])
         with col_path:
-            # Use session state to remember the path
             if 'download_path' not in st.session_state:
                 st.session_state['download_path'] = os.getcwd()
             st.text_input("SAVE LOCATION", value=st.session_state['download_path'], disabled=True)
         with col_btn:
-            st.write("") # Spacer
-            st.write("") # Spacer
+            st.write("") 
+            st.write("") 
             if st.button("📂"):
                 selected_folder = open_folder_dialog()
                 if selected_folder:
                     st.session_state['download_path'] = selected_folder
                     st.rerun()
 
-        # 5. Download Button & Logic
         if st.button("INITIATE DOWNLOAD", type="primary"):
             if video_url:
                 status_text = st.empty()
                 progress_bar = st.progress(0)
-                
                 try:
                     status_text.info("Analyzing Metadata...")
-                    
-                    # --- Progress Hook ---
                     def progress_hook(d):
                         if d['status'] == 'downloading':
                             try:
                                 p = d.get('_percent_str', '0%').replace('%','')
                                 progress_bar.progress(float(p) / 100)
                                 status_text.info(f"Downloading: {d.get('_percent_str')} | Speed: {d.get('_speed_str')}")
-                            except:
-                                pass
+                            except: pass
                         if d['status'] == 'finished':
                             progress_bar.progress(100)
                             status_text.success("Download Complete! Processing...")
 
-                    # --- Build Options based on User Selection ---
                     ydl_opts = {
                         'outtmpl': f"{st.session_state['download_path']}/%(title)s.%(ext)s",
                         'progress_hooks': [progress_hook],
@@ -218,34 +208,144 @@ elif mode == "📥 YouTube Downloader":
 
                     if format_type == "Audio Only (MP3)":
                         ydl_opts['format'] = 'bestaudio/best'
-                        ydl_opts['postprocessors'] = [{
-                            'key': 'FFmpegExtractAudio',
-                            'preferredcodec': 'mp3',
-                            'preferredquality': '192',
-                        }]
+                        ydl_opts['postprocessors'] = [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192',}]
                     else:
-                        # Video Selection Logic
-                        if resolution == "Best Available":
-                            ydl_opts['format'] = 'bestvideo+bestaudio/best'
-                        elif resolution == "1080p":
-                            ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
-                        elif resolution == "720p":
-                            ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
-                        elif resolution == "480p":
-                            ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
-                        elif resolution == "360p":
-                            ydl_opts['format'] = 'bestvideo[height<=360]+bestaudio/best[height<=360]'
+                        if resolution == "Best Available": ydl_opts['format'] = 'bestvideo+bestaudio/best'
+                        elif resolution == "1080p": ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
+                        elif resolution == "720p": ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
+                        elif resolution == "480p": ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+                        elif resolution == "360p": ydl_opts['format'] = 'bestvideo[height<=360]+bestaudio/best[height<=360]'
 
-                    # --- Execute ---
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([video_url])
-                    
                     st.balloons()
                     status_text.success(f"Saved to: {st.session_state['download_path']}")
-                    
                 except Exception as e:
                     status_text.error(f"Error: {str(e)}")
             else:
                 st.warning("Please enter a valid URL.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ==========================================
+# INTERFACE 3: EMAIL PROTOCOL (UPDATED)
+# ==========================================
+elif mode == "✉️ Email Protocol":
+    st.markdown("<h2 style='text-align:center; color:#00e0ff;'>SECURE COMMUNICATIONS LINK</h2>", unsafe_allow_html=True)
+    
+    # Init Email Draft State
+    if 'email_draft' not in st.session_state:
+        st.session_state['email_draft'] = {"to": "", "subject": "", "body": ""}
+
+    tab1, tab2, tab3 = st.tabs(["COMPOSE", "INBOX", "CONTACTS"])
+
+    # --- TAB 1: COMPOSE & VOICE ---
+    with tab1:
+        e_col1, e_col2 = st.columns([1, 2])
         
+        with e_col1:
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            st.subheader("Voice Command")
+            st.info("Try: 'Send an email to John about the meeting'")
+            
+            if st.button("🎙️ DICTATE EMAIL"):
+                with st.spinner("Listening for email instructions..."):
+                    cmd = listen_input()
+                    if cmd:
+                        st.success(f"Recognized: {cmd}")
+                        parsed = st.session_state.email_bot.parse_voice_command(cmd)
+                        
+                        if parsed:
+                            st.session_state['email_draft']['to'] = parsed.get('recipient_email') or parsed.get('recipient_name') or ""
+                            st.session_state['email_draft']['subject'] = parsed.get('subject') or ""
+                            st.session_state['email_draft']['body'] = parsed.get('body') or ""
+                            st.rerun()
+                        else:
+                            st.error("Could not understand email intent.")
+                    else:
+                        st.warning("No audio detected.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with e_col2:
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            st.subheader("Secure Transmission Form")
+            
+            # --- INPUTS ---
+            to_addr = st.text_input("RECIPIENT (Enter ANY Email Address)", value=st.session_state['email_draft']['to'], placeholder="name@example.com")
+            
+            # Subject and AI Generator Button
+            col_sub, col_gen = st.columns([3, 1])
+            with col_sub:
+                subj = st.text_input("SUBJECT", value=st.session_state['email_draft']['subject'])
+            with col_gen:
+                st.write("") # Spacer
+                st.write("") # Spacer
+                if st.button("✨ AUTO-GEN", help="Generate email body from Subject"):
+                    if subj:
+                        with st.spinner("Generating content..."):
+                            generated_body = st.session_state.email_bot.generate_email_body(subj)
+                            st.session_state['email_draft']['body'] = generated_body
+                            st.rerun()
+                    else:
+                        st.warning("Enter a subject first.")
+
+            body = st.text_area("MESSAGE BODY", value=st.session_state['email_draft']['body'], height=200)
+            
+            # Sync back manual edits to state
+            st.session_state['email_draft']['to'] = to_addr
+            st.session_state['email_draft']['subject'] = subj
+            st.session_state['email_draft']['body'] = body
+
+            if st.button("SEND TRANSMISSION", type="primary"):
+                if to_addr and body:
+                    with st.spinner("Encrypting and Sending..."):
+                        success, msg = st.session_state.email_bot.send_email(to_addr, subj, body)
+                        if success:
+                            st.success(msg)
+                            st.balloons()
+                            st.session_state['email_draft'] = {"to": "", "subject": "", "body": ""}
+                        else:
+                            st.error(msg)
+                else:
+                    st.warning("Recipient and Body are required.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- TAB 2: INBOX ---
+    with tab2:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        if st.button("🔄 FETCH RECENT EMAILS"):
+            with st.spinner("Accessing Secure Server..."):
+                emails = st.session_state.email_bot.fetch_recent_emails(limit=5)
+                if emails:
+                    for e in emails:
+                        st.markdown(f"**From:** {e['sender']}")
+                        st.markdown(f"**Subject:** {e['subject']}")
+                        st.text(f"{e['preview']}")
+                        st.divider()
+                else:
+                    st.info("No emails found or connection failed.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- TAB 3: CONTACTS ---
+    with tab3:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        c_col1, c_col2 = st.columns(2)
+        
+        with c_col1:
+            st.subheader("Add Contact")
+            new_name = st.text_input("Name")
+            new_email = st.text_input("Email Address")
+            if st.button("SAVE CONTACT"):
+                if new_name and new_email:
+                    res = st.session_state.email_bot.add_contact(new_name, new_email)
+                    st.success(res)
+                    st.rerun()
+        
+        with c_col2:
+            st.subheader("Directory")
+            contacts = st.session_state.email_bot.load_contacts()
+            if contacts:
+                for c in contacts:
+                    st.code(f"{c['name'].capitalize()}: {c['email']}")
+            else:
+                st.info("No contacts in database.")
         st.markdown('</div>', unsafe_allow_html=True)

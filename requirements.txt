@@ -1,0 +1,10 @@
+speechrecognition
+pyttsx3
+google-generativeai
+requests
+pocketsphinx
+psutil
+streamlit
+yt-dlp
+ollama
+beautifulsoup4
