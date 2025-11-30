@@ -9,9 +9,10 @@ from tkinter import filedialog
 from Project_core import processcommand, listen_input, get_system_stats, get_weather
 
 # --- IMPORT MODULES ---
-# Make sure email_module.py and messaging_module.py are in the same folder
+# Ensure these files are in the same directory as app.py
 from email_module import EmailAssistant
 from messaging_module import MessagingAssistant
+from reminders_module import RemindersAssistant
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -23,18 +24,18 @@ st.set_page_config(
 
 # --- INITIALIZE SINGLETONS (Background Services) ---
 
-# 1. Email Bot (Session State)
+# 1. Email Bot (Stored in Session State to persist across re-runs)
 if 'email_bot' not in st.session_state:
     st.session_state.email_bot = EmailAssistant()
 
-# 2. Messaging Bot (Global Resource Cache)
-# We use cache_resource because it runs background threads (scheduler/telegram bot)
-# and we don't want to restart threads on every interaction.
+# 2. Messaging & Reminders Bots (Cached Resources)
+# We use cache_resource because they run background threads (schedulers)
+# and we don't want to restart those threads on every interaction.
 @st.cache_resource
-def get_messaging_bot():
-    return MessagingAssistant()
+def get_bots():
+    return MessagingAssistant(), RemindersAssistant()
 
-msg_bot = get_messaging_bot()
+msg_bot, rem_bot = get_bots()
 
 # --- CUSTOM CSS STYLING (THEME ENGINE) ---
 st.markdown("""
@@ -156,7 +157,7 @@ st.markdown("""
 
     /* --- CHAT BUBBLES --- */
     .chat-container {
-        height: 55vh;
+        height: 60vh;
         overflow-y: auto;
         padding: 10px;
         display: flex;
@@ -199,12 +200,11 @@ st.markdown("""
     ::-webkit-scrollbar-thumb { background: #00e0ff; border-radius: 4px; }
 
     /* --- UTILITY CLASSES --- */
-    .status-active { color: #00ff88; text-shadow: 0 0 5px #00ff88; }
-    .status-warn { color: #ffcc00; text-shadow: 0 0 5px #ffcc00; }
-    .status-err { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
-    
     .stat-label { font-size: 0.9rem; color: #88c0d0; text-transform: uppercase; }
     .stat-val { font-size: 1.5rem; font-weight: bold; font-family: 'Orbitron'; color: #fff; }
+    
+    .rem-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .rem-fired { border-left: 4px solid #ff3333; background: rgba(255, 50, 50, 0.1); }
     
     /* Progress Bar Hack */
     .stProgress > div > div > div > div {
@@ -226,7 +226,7 @@ def open_folder_dialog():
 
 def render_stat_card(label, value, color="#00e0ff"):
     return f"""
-    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border-left: 3px solid {color}; margin-bottom:10px;">
+    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border-left: 3px solid {color}; margin-bottom:10px; flex:1; margin-right:5px;">
         <div class="stat-label">{label}</div>
         <div class="stat-val" style="color:{color}">{value}</div>
     </div>
@@ -239,13 +239,19 @@ with st.sidebar:
     st.markdown("### NAVIGATION")
     mode = st.radio(
         "Select Module", 
-        ["🎙️ COMMAND CENTER", "📥 DOWNLOADER", "✉️ EMAIL PROTOCOL", "💬 MESSAGING"],
+        ["🎙️ COMMAND CENTER", "⏰ SMART REMINDERS", "📥 DOWNLOADER", "✉️ EMAIL PROTOCOL", "💬 MESSAGING"],
         label_visibility="collapsed"
     )
     
     st.divider()
     
-    # Minimal System Stats in Sidebar
+    # Active Reminders Counter
+    pending_count = len([r for r in rem_bot.reminders if r['status'] == 'pending'])
+    st.metric("PENDING TASKS", pending_count)
+    
+    st.divider()
+    
+    # System Stats
     cpu, ram, disk = get_system_stats()
     st.markdown(f"**SYS DIAGNOSTICS**", unsafe_allow_html=True)
     st.markdown(f"<small>CPU LOAD</small>", unsafe_allow_html=True)
@@ -285,14 +291,14 @@ if mode == "🎙️ COMMAND CENTER":
         # Reactor Visual
         st.markdown('<div class="armor-card"><div class="reactor-container"><div class="reactor"><div class="reactor-core"></div></div></div></div>', unsafe_allow_html=True)
         
-        # Status
+        # Status Cards
         temp, hum, wind = get_weather()
         st.markdown(f"""
         <div class="armor-card">
             <div style="display:flex; justify-content:space-between;">
                 {render_stat_card("TEMP", f"{temp}°C", "#ffcc00")}
                 {render_stat_card("HUMIDITY", f"{hum}%", "#00ff88")}
-                {render_stat_card("WIND", f"{wind} km/h", "#00e0ff")}
+                {render_stat_card("WIND", f"{wind}km", "#00e0ff")}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -340,7 +346,120 @@ if mode == "🎙️ COMMAND CENTER":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 2: YOUTUBE DOWNLOADER
+# MODULE 2: SMART REMINDERS
+# ==========================================
+elif mode == "⏰ SMART REMINDERS":
+    
+    # 1. Creation Panel
+    with st.container():
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        c_voice, c_text = st.columns([1, 3])
+        
+        with c_voice:
+            st.markdown("#### VOICE ENTRY")
+            if st.button("🎙️ ADD TASK", use_container_width=True):
+                with st.spinner("Listening..."):
+                    cmd = listen_input()
+                    if cmd:
+                        parsed = rem_bot.parse_command(cmd)
+                        if parsed:
+                            if parsed['intent'] == 'reminder':
+                                msg = rem_bot.add_reminder(parsed['content'], parsed['time'], parsed.get('category', 'General'))
+                                st.success(msg)
+                            elif parsed['intent'] == 'todo':
+                                msg = rem_bot.add_todo(parsed['content'])
+                                st.success(msg)
+                            elif parsed['intent'] == 'shopping':
+                                msg = rem_bot.add_shopping(parsed['content'])
+                                st.success(msg)
+                            else:
+                                st.error("Unknown intent.")
+                        else: st.error("Could not understand command.")
+        
+        with c_text:
+            st.markdown("#### MANUAL ENTRY")
+            with st.form("quick_add"):
+                c_t1, c_t2, c_t3 = st.columns([2, 1, 1])
+                desc = c_t1.text_input("Description", placeholder="Buy milk / Meeting at 5pm")
+                cat = c_t2.selectbox("Type", ["Reminder", "To-Do", "Shopping"])
+                sub = c_t3.form_submit_button("ADD ITEM", use_container_width=True)
+                if sub and desc:
+                    if cat == "Reminder":
+                        # Simple parse for manual entry (assumes description has time or defaults to now)
+                        rem_bot.add_reminder(desc, "today") 
+                        st.success("Reminder added (Default time: Today/Now)")
+                    elif cat == "To-Do":
+                        rem_bot.add_todo(desc)
+                        st.success("Added to To-Do")
+                    else:
+                        rem_bot.add_shopping(desc)
+                        st.success("Added to Shopping List")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # 2. Lists Display
+    tab1, tab2, tab3 = st.tabs(["⏳ REMINDERS", "📋 TO-DO LIST", "🛒 SHOPPING"])
+    
+    with tab1:
+        # Sort: Triggered first, then Pending
+        sorted_rems = sorted(rem_bot.reminders, key=lambda x: (x['status'] != 'triggered', x['time']))
+        
+        if not sorted_rems: st.info("No active reminders.")
+        
+        for r in sorted_rems:
+            css_class = "rem-item rem-fired" if r['status'] == 'triggered' else "rem-item"
+            status_icon = "🔴 DUE" if r['status'] == 'triggered' else "🟢"
+            
+            with st.container():
+                st.markdown(f"""
+                <div class="{css_class}">
+                    <div>
+                        <strong style="font-size:1.1em; color:#fff">{r['title']}</strong><br>
+                        <small style="color:#00e0ff">{r['time']}</small>
+                    </div>
+                    <div style="font-weight:bold;">{status_icon}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                # Delete Button
+                if st.button("DISMISS / DELETE", key=f"del_rem_{r['id']}"):
+                    rem_bot.delete_item("reminder", r['id'])
+                    st.rerun()
+
+    with tab2:
+        if not rem_bot.todo_list: st.info("To-Do list is empty.")
+        for t in rem_bot.todo_list:
+            c_check, c_txt, c_del = st.columns([0.5, 4, 1])
+            is_done = t['status'] == 'completed'
+            
+            if c_check.checkbox("", value=is_done, key=f"chk_todo_{t['id']}"):
+                rem_bot.toggle_status("todo", t['id'])
+                st.rerun()
+            
+            st_style = "text-decoration:line-through; color:#666;" if is_done else "color:#fff;"
+            c_txt.markdown(f"<span style='{st_style} font-size:1.1em;'>{t['item']}</span>", unsafe_allow_html=True)
+            
+            if c_del.button("❌", key=f"del_todo_{t['id']}"):
+                rem_bot.delete_item("todo", t['id'])
+                st.rerun()
+
+    with tab3:
+        if not rem_bot.shopping_list: st.info("Shopping list is empty.")
+        for s in rem_bot.shopping_list:
+            c_check, c_txt, c_del = st.columns([0.5, 4, 1])
+            is_done = s['status'] == 'completed'
+            
+            if c_check.checkbox("", value=is_done, key=f"chk_shop_{s['id']}"):
+                rem_bot.toggle_status("shopping", s['id'])
+                st.rerun()
+                
+            st_style = "text-decoration:line-through; color:#666;" if is_done else "color:#fff;"
+            c_txt.markdown(f"<span style='{st_style} font-size:1.1em;'>{s['item']} (Qty: {s['quantity']})</span>", unsafe_allow_html=True)
+            
+            if c_del.button("❌", key=f"del_shop_{s['id']}"):
+                rem_bot.delete_item("shopping", s['id'])
+                st.rerun()
+
+# ==========================================
+# MODULE 3: YOUTUBE DOWNLOADER
 # ==========================================
 elif mode == "📥 DOWNLOADER":
     c_main = st.container()
@@ -424,7 +543,7 @@ elif mode == "📥 DOWNLOADER":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 3: EMAIL PROTOCOL
+# MODULE 4: EMAIL PROTOCOL
 # ==========================================
 elif mode == "✉️ EMAIL PROTOCOL":
     if 'email_draft' not in st.session_state:
@@ -525,7 +644,7 @@ elif mode == "✉️ EMAIL PROTOCOL":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 4: MESSAGING
+# MODULE 5: MESSAGING
 # ==========================================
 elif mode == "💬 MESSAGING":
     tab1, tab2, tab3, tab4 = st.tabs(["SEND", "FEED", "LOGS", "CONFIG"])
