@@ -13,8 +13,8 @@ python-telegram-bot
 dateparser
 pandas
 pyautogui
-# New dependencies for Desktop Control
 screen-brightness-control
 pycaw
 comtypes
 keyboard
+opencv-python

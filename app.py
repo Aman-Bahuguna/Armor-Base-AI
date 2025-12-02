@@ -9,41 +9,49 @@ from tkinter import filedialog
 from Project_core import processcommand, listen_input, get_system_stats, get_weather
 
 # --- IMPORT MODULES ---
+# Ensure these files are in the same directory as app.py
 from email_module import EmailAssistant
 from messaging_module import MessagingAssistant
 from reminders_module import RemindersAssistant
 from desktop_module import DesktopAssistant
+from security_module import SecuritySystem
 
 # --- IMPORT UI MODULES ---
-import ui_desktop  # New separate UI file for Desktop Control
+import ui_desktop  # Separate UI file for Desktop Control
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="ARMOR AI",
-    page_icon="🤖",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # --- INITIALIZE SINGLETONS (Background Services) ---
 
-# 1. Email Bot (Session State)
+# 1. Email Bot (Stored in Session State to persist across re-runs)
 if 'email_bot' not in st.session_state:
     st.session_state.email_bot = EmailAssistant()
 
 # 2. Global Bots (Cached Resources)
+# We use cache_resource because they run background threads (schedulers, surveillance)
 @st.cache_resource
 def get_bots():
-    return MessagingAssistant(), RemindersAssistant(), DesktopAssistant()
+    return MessagingAssistant(), RemindersAssistant(), DesktopAssistant(), SecuritySystem()
 
-msg_bot, rem_bot, desk_bot = get_bots()
+msg_bot, rem_bot, desk_bot, sec_bot = get_bots()
 
-# --- CUSTOM CSS STYLING ---
+# Link Security Bot to Messengers for Alerts
+sec_bot.email_bot = st.session_state.email_bot
+sec_bot.msg_bot = msg_bot
+
+# --- CUSTOM CSS STYLING (THEME ENGINE) ---
 st.markdown("""
 <style>
+    /* IMPORT FONTS */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;600&display=swap');
 
-    /* Global App Styling */
+    /* --- GLOBAL APP STYLES --- */
     .stApp {
         background-color: #050a14;
         background-image: radial-gradient(circle at 50% 50%, #0a1128 0%, #02040a 100%);
@@ -59,13 +67,13 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(0, 224, 255, 0.5);
     }
 
-    /* Sidebar Styling */
+    /* --- SIDEBAR STYLING --- */
     [data-testid="stSidebar"] {
         background-color: rgba(5, 10, 20, 0.95);
         border-right: 1px solid rgba(0, 224, 255, 0.2);
     }
     
-    /* Glassmorphism Cards */
+    /* --- GLASSMORPHISM CARDS --- */
     .armor-card {
         background: rgba(13, 22, 35, 0.6);
         border: 1px solid rgba(0, 224, 255, 0.15);
@@ -82,65 +90,153 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 224, 255, 0.2);
         border-color: rgba(0, 224, 255, 0.4);
     }
+    
+    /* --- SECURITY SPECIFIC --- */
+    .sec-active { 
+        border: 1px solid #ff3333; 
+        box-shadow: 0 0 20px rgba(255, 50, 50, 0.4); 
+    }
 
-    /* Reactor Animation */
+    /* --- REACTOR ANIMATION (VOICE CORE) --- */
+    .reactor-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        position: relative;
+    }
     .reactor {
-        width: 140px; height: 140px;
+        width: 140px;
+        height: 140px;
         background: radial-gradient(circle, #00e0ff 0%, transparent 70%);
         border-radius: 50%;
         border: 4px solid rgba(0, 224, 255, 0.3);
         box-shadow: 0 0 30px #00e0ff, inset 0 0 30px #00e0ff;
         animation: pulse 3s infinite ease-in-out;
-        margin: 0 auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .reactor-core {
+        width: 80px;
+        height: 80px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 50px #00e0ff;
+        animation: flicker 0.1s infinite alternate;
+        opacity: 0.9;
     }
     @keyframes pulse {
         0% { transform: scale(0.95); box-shadow: 0 0 20px #00e0ff; opacity: 0.7; }
         50% { transform: scale(1.05); box-shadow: 0 0 60px #00e0ff; opacity: 1; }
         100% { transform: scale(0.95); box-shadow: 0 0 20px #00e0ff; opacity: 0.7; }
     }
-
-    /* Inputs & Buttons */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-        background-color: rgba(10, 20, 30, 0.8);
-        border: 1px solid rgba(0, 224, 255, 0.3);
-        color: #fff;
-        font-family: 'Rajdhani', sans-serif;
+    @keyframes flicker {
+        0% { opacity: 0.8; }
+        100% { opacity: 1; }
     }
+
+    /* --- CUSTOM BUTTONS --- */
     .stButton > button {
         background: rgba(0, 224, 255, 0.05);
         border: 1px solid #00e0ff;
         color: #00e0ff;
         font-family: 'Orbitron', sans-serif;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     .stButton > button:hover {
         background: rgba(0, 224, 255, 0.2);
         box-shadow: 0 0 15px #00e0ff;
         color: #fff;
     }
+    .stButton > button:active {
+        transform: scale(0.98);
+    }
 
-    /* Utility Classes */
+    /* --- INPUT FIELDS --- */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+        background-color: rgba(10, 20, 30, 0.8);
+        border: 1px solid rgba(0, 224, 255, 0.3);
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        border-radius: 4px;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #00e0ff;
+        box-shadow: 0 0 10px rgba(0, 224, 255, 0.3);
+    }
+
+    /* --- CHAT BUBBLES --- */
+    .chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column-reverse;
+        scroll-behavior: smooth;
+    }
+    .bubble {
+        padding: 12px 18px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        max-width: 80%;
+        font-size: 1.1rem;
+        line-height: 1.5;
+        position: relative;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .bubble-user {
+        background: rgba(0, 255, 136, 0.1);
+        border-right: 3px solid #00ff88;
+        align-self: flex-end;
+        text-align: right;
+        color: #ccffdd;
+        margin-left: auto;
+    }
+    .bubble-ai {
+        background: rgba(0, 224, 255, 0.1);
+        border-left: 3px solid #00e0ff;
+        align-self: flex-start;
+        text-align: left;
+        color: #d1f7ff;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- SCROLLBAR --- */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #050a14; }
+    ::-webkit-scrollbar-thumb { background: #00e0ff; border-radius: 4px; }
+
+    /* --- UTILITY CLASSES --- */
     .stat-label { font-size: 0.9rem; color: #88c0d0; text-transform: uppercase; }
     .stat-val { font-size: 1.5rem; font-weight: bold; font-family: 'Orbitron'; color: #fff; }
+    
+    .rem-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .rem-fired { border-left: 4px solid #ff3333; background: rgba(255, 50, 50, 0.1); }
     
     /* Progress Bar Hack */
     .stProgress > div > div > div > div {
         background-color: #00e0ff;
         box-shadow: 0 0 10px #00e0ff;
     }
-    
-    /* Chat Bubbles */
-    .chat-container { height: 60vh; overflow-y: auto; display: flex; flex-direction: column-reverse; padding: 10px; }
-    .bubble { padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; max-width: 80%; }
-    .bubble-user { background: rgba(0, 255, 136, 0.1); border-right: 3px solid #00ff88; align-self: flex-end; text-align: right; }
-    .bubble-ai { background: rgba(0, 224, 255, 0.1); border-left: 3px solid #00e0ff; align-self: flex-start; text-align: left; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- HELPER FUNCTIONS ---
 def open_folder_dialog():
-    root = tk.Tk(); root.withdraw(); root.wm_attributes('-topmost', 1)
-    path = filedialog.askdirectory(master=root); root.destroy()
-    return path
+    """Opens local folder picker dialog."""
+    root = tk.Tk()
+    root.withdraw() 
+    root.wm_attributes('-topmost', 1) 
+    folder_path = filedialog.askdirectory(master=root)
+    root.destroy()
+    return folder_path
 
 def render_stat_card(label, value, color="#00e0ff"):
     return f"""
@@ -154,11 +250,11 @@ def render_stat_card(label, value, color="#00e0ff"):
 with st.sidebar:
     st.markdown("<div style='text-align: center; margin-bottom: 20px;'><h1 style='font-size: 2em; margin:0;'>ARMOR</h1><small style='color:#00e0ff; letter-spacing:3px;'>SYSTEMS ONLINE</small></div>", unsafe_allow_html=True)
     
-    st.markdown("### NAVIGATION")
     mode = st.radio(
         "Select Module", 
         [
             "🎙️ COMMAND CENTER", 
+            "🛡️ SECURITY MODE",
             "🖥️ DESKTOP CONTROL",
             "⏰ SMART REMINDERS",
             "📥 DOWNLOADER", 
@@ -172,8 +268,9 @@ with st.sidebar:
     
     # Active Reminders Counter
     pending_count = len([r for r in rem_bot.reminders if r['status'] == 'pending'])
-    st.metric("PENDING TASKS", pending_count)
-    
+    if pending_count > 0:
+        st.metric("TASKS PENDING", pending_count)
+        
     st.divider()
     
     # System Stats
@@ -209,10 +306,12 @@ st.write("") # Spacer
 if mode == "🎙️ COMMAND CENTER":
     if 'history' not in st.session_state: st.session_state['history'] = []
     
+    # Layout: Left (Reactor/Controls) | Right (Chat Log/Info)
     c1, c2 = st.columns([1, 1.5])
+    
     with c1:
         # Reactor Visual
-        st.markdown('<div class="armor-card"><div class="reactor"></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="armor-card"><div class="reactor-container"><div class="reactor"><div class="reactor-core"></div></div></div></div>', unsafe_allow_html=True)
         
         # Status Cards
         temp, hum, wind = get_weather()
@@ -231,10 +330,19 @@ if mode == "🎙️ COMMAND CENTER":
         st.markdown("#### VOICE INPUT")
         if st.button("🎙️ INITIATE LISTENING SEQUENCE", use_container_width=True):
             with st.spinner("LISTENING..."):
-                text = listen_input()
-                if text:
-                    response = processcommand(text)
-                    st.session_state['history'].append((text, response))
+                txt = listen_input()
+                if txt:
+                    # Check for Security Commands via Voice
+                    sec_parsed = sec_bot.parse_security_command(txt)
+                    if sec_parsed and sec_parsed.get('intent') in ['activate', 'deactivate']:
+                        if sec_parsed['intent'] == 'activate':
+                            res = sec_bot.start_surveillance()
+                        else:
+                            res = sec_bot.stop_surveillance()
+                    else:
+                        res = processcommand(txt)
+                        
+                    st.session_state['history'].append((txt, res))
                     st.rerun()
                 else:
                     st.warning("NO AUDIO DETECTED")
@@ -258,6 +366,7 @@ if mode == "🎙️ COMMAND CENTER":
         st.markdown('<div class="armor-card" style="height: 70vh;">', unsafe_allow_html=True)
         st.markdown("#### COMMUNICATION LOG")
         
+        # Custom HTML Chat Render
         chat_html = '<div class="chat-container">'
         for q, a in reversed(st.session_state['history']):
             chat_html += f'<div class="bubble bubble-user">{q}</div>'
@@ -268,16 +377,98 @@ if mode == "🎙️ COMMAND CENTER":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 2: DESKTOP CONTROL (NEW)
+# MODULE 2: SECURITY MODE
+# ==========================================
+elif mode == "🛡️ SECURITY MODE":
+    
+    # Status Header
+    status_color = "#ff3333" if sec_bot.active else "#666"
+    status_text = "ACTIVE - MONITORING" if sec_bot.active else "INACTIVE - STANDBY"
+    card_class = "armor-card sec-active" if sec_bot.active else "armor-card"
+    
+    st.markdown(f"""
+    <div class="{card_class}" style="text-align:center;">
+        <h3 style="color:{status_color}; margin:0;">STATUS: {status_text}</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_ctrl, col_feed = st.columns([1, 2])
+    
+    with col_ctrl:
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        st.markdown("#### CONTROLS")
+        
+        if sec_bot.active:
+            if st.button("🔴 DEACTIVATE SYSTEM", type="primary", use_container_width=True):
+                sec_bot.stop_surveillance()
+                st.rerun()
+        else:
+            if st.button("🟢 ACTIVATE SURVEILLANCE", type="primary", use_container_width=True):
+                sec_bot.start_surveillance()
+                st.rerun()
+                
+        st.divider()
+        st.markdown("#### CONFIGURATION")
+        sec_bot.alert_tts = st.toggle("Voice Alerts", value=sec_bot.alert_tts)
+        sec_bot.alert_email = st.toggle("Email Alerts", value=sec_bot.alert_email)
+        sec_bot.alert_telegram = st.toggle("Telegram Alerts", value=sec_bot.alert_telegram)
+        sec_bot.sensitivity = st.slider("Motion Sensitivity", 500, 10000, 5000, help="Lower is more sensitive")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col_feed:
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        st.markdown("#### LIVE FEED")
+        
+        feed_placeholder = st.empty()
+        
+        if sec_bot.active:
+            # Loop for live feed simulation
+            while True:
+                if sec_bot.latest_frame is not None:
+                    feed_placeholder.image(sec_bot.latest_frame, channels="RGB", use_container_width=True)
+                else:
+                    feed_placeholder.warning("Initializing Camera Feed...")
+                time.sleep(0.1)
+        else:
+            feed_placeholder.info("Camera Offline. Activate System to view feed.")
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Logs Section
+    st.markdown("### 📋 SECURITY LOGS")
+    logs = sec_bot.load_logs()
+    if logs:
+        for i in range(0, len(logs), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(logs):
+                    entry = logs[i+j]
+                    with cols[j]:
+                        st.markdown(f"""
+                        <div class="armor-card" style="padding:10px;">
+                            <small style="color:#ff3333">{entry['timestamp']}</small><br>
+                            <strong>{entry['event']}</strong>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        img_path = os.path.join("security_captures", entry['file'])
+                        if os.path.exists(img_path):
+                            st.image(img_path)
+    else:
+        st.info("No security events recorded.")
+
+# ==========================================
+# MODULE 3: DESKTOP CONTROL
 # ==========================================
 elif mode == "🖥️ DESKTOP CONTROL":
     # Delegate rendering to the separate UI file
     ui_desktop.render_desktop_ui(desk_bot, listen_input)
 
 # ==========================================
-# MODULE 3: SMART REMINDERS
+# MODULE 4: SMART REMINDERS
 # ==========================================
 elif mode == "⏰ SMART REMINDERS":
+    
+    # 1. Creation Panel
     with st.container():
         st.markdown('<div class="armor-card">', unsafe_allow_html=True)
         c_voice, c_text = st.columns([1, 3])
@@ -322,10 +513,13 @@ elif mode == "⏰ SMART REMINDERS":
                         st.success("Added to Shopping List")
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # 2. Lists Display
     tab1, tab2, tab3 = st.tabs(["⏳ REMINDERS", "📋 TO-DO LIST", "🛒 SHOPPING"])
     
     with tab1:
+        # Sort: Triggered first, then Pending
         sorted_rems = sorted(rem_bot.reminders, key=lambda x: (x['status'] != 'triggered', x['time']))
+        
         if not sorted_rems: st.info("No active reminders.")
         
         for r in sorted_rems:
@@ -376,87 +570,91 @@ elif mode == "⏰ SMART REMINDERS":
                 st.rerun()
 
 # ==========================================
-# MODULE 4: DOWNLOADER
+# MODULE 5: DOWNLOADER
 # ==========================================
 elif mode == "📥 DOWNLOADER":
-    st.markdown('<div class="armor-card">', unsafe_allow_html=True)
-    col_input, col_opt = st.columns([2, 1])
+    c_main = st.container()
     
-    with col_input:
-        video_url = st.text_input("TARGET URL (YouTube)", placeholder="https://youtube.com/watch?v=...")
-    
-    with col_opt:
-        format_type = st.selectbox("FORMAT TYPE", ["Video + Audio", "Audio Only (MP3)"])
-    
-    c_res, c_path = st.columns([1, 2])
-    with c_res:
-        if format_type == "Video + Audio":
-            resolution = st.selectbox("RESOLUTION", ["Best Available", "1080p", "720p", "480p"])
-        else:
-            resolution = st.selectbox("BITRATE", ["Best Quality (320kbps)", "Standard (128kbps)"])
-    
-    with c_path:
-        if 'download_path' not in st.session_state:
-            st.session_state['download_path'] = os.getcwd()
+    with c_main:
+        st.markdown('<div class="armor-card">', unsafe_allow_html=True)
+        col_input, col_opt = st.columns([2, 1])
         
-        c_p_text, c_p_btn = st.columns([3, 1])
-        with c_p_text:
-            st.text_input("OUTPUT PATH", value=st.session_state['download_path'], disabled=True, label_visibility="collapsed")
-        with c_p_btn:
-            if st.button("📂 BROWSE"):
-                path = open_folder_dialog()
-                if path: 
-                    st.session_state['download_path'] = path
-                    st.rerun()
-
-    st.write("")
-    if st.button("INITIATE DOWNLOAD SEQUENCE", type="primary", use_container_width=True):
-        if video_url:
-            status_box = st.empty()
-            prog_bar = st.progress(0)
+        with col_input:
+            video_url = st.text_input("TARGET URL (YouTube)", placeholder="https://youtube.com/watch?v=...")
+        
+        with col_opt:
+            format_type = st.selectbox("FORMAT TYPE", ["Video + Audio", "Audio Only (MP3)"])
+        
+        c_res, c_path = st.columns([1, 2])
+        with c_res:
+            if format_type == "Video + Audio":
+                resolution = st.selectbox("RESOLUTION", ["Best Available", "1080p", "720p", "480p"])
+            else:
+                resolution = st.selectbox("BITRATE", ["Best Quality (320kbps)", "Standard (128kbps)"])
+        
+        with c_path:
+            if 'download_path' not in st.session_state:
+                st.session_state['download_path'] = os.getcwd()
             
-            try:
-                status_box.info("ANALYZING METADATA...")
-                def progress_hook(d):
-                    if d['status'] == 'downloading':
-                        try:
-                            p = d.get('_percent_str', '0%').replace('%','')
-                            prog_bar.progress(float(p) / 100)
-                            status_box.markdown(f"<span style='color:#00e0ff'>DOWNLOADING:</span> {d.get('_percent_str')} | SPEED: {d.get('_speed_str')}", unsafe_allow_html=True)
-                        except: pass
-                    if d['status'] == 'finished':
-                        prog_bar.progress(100)
-                        status_box.success("DOWNLOAD COMPLETE. PROCESSING...")
+            c_p_text, c_p_btn = st.columns([3, 1])
+            with c_p_text:
+                st.text_input("OUTPUT PATH", value=st.session_state['download_path'], disabled=True, label_visibility="collapsed")
+            with c_p_btn:
+                if st.button("📂 BROWSE"):
+                    path = open_folder_dialog()
+                    if path: 
+                        st.session_state['download_path'] = path
+                        st.rerun()
 
-                ydl_opts = {
-                    'outtmpl': f"{st.session_state['download_path']}/%(title)s.%(ext)s",
-                    'progress_hooks': [progress_hook],
-                    'quiet': True,
-                    'no_warnings': True,
-                }
+        st.write("")
+        if st.button("INITIATE DOWNLOAD SEQUENCE", type="primary", use_container_width=True):
+            if video_url:
+                status_box = st.empty()
+                prog_bar = st.progress(0)
+                
+                try:
+                    status_box.info("ANALYZING METADATA...")
+                    
+                    def progress_hook(d):
+                        if d['status'] == 'downloading':
+                            try:
+                                p = d.get('_percent_str', '0%').replace('%','')
+                                prog_bar.progress(float(p) / 100)
+                                status_box.markdown(f"<span style='color:#00e0ff'>DOWNLOADING:</span> {d.get('_percent_str')} | SPEED: {d.get('_speed_str')}", unsafe_allow_html=True)
+                            except: pass
+                        if d['status'] == 'finished':
+                            prog_bar.progress(100)
+                            status_box.success("DOWNLOAD COMPLETE. PROCESSING...")
 
-                if format_type == "Audio Only (MP3)":
-                    ydl_opts['format'] = 'bestaudio/best'
-                    ydl_opts['postprocessors'] = [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192',}]
-                else:
-                    if resolution == "Best Available": ydl_opts['format'] = 'bestvideo+bestaudio/best'
-                    elif resolution == "1080p": ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
-                    elif resolution == "720p": ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
-                    elif resolution == "480p": ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+                    ydl_opts = {
+                        'outtmpl': f"{st.session_state['download_path']}/%(title)s.%(ext)s",
+                        'progress_hooks': [progress_hook],
+                        'quiet': True,
+                        'no_warnings': True,
+                    }
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([video_url])
-                st.balloons()
-                status_box.success(f"FILE SECURED AT: {st.session_state['download_path']}")
-            except Exception as e:
-                status_box.error(f"DOWNLOAD ERROR: {str(e)}")
-        else:
-            st.warning("INVALID TARGET URL")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+                    if format_type == "Audio Only (MP3)":
+                        ydl_opts['format'] = 'bestaudio/best'
+                        ydl_opts['postprocessors'] = [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192',}]
+                    else:
+                        if resolution == "Best Available": ydl_opts['format'] = 'bestvideo+bestaudio/best'
+                        elif resolution == "1080p": ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
+                        elif resolution == "720p": ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
+                        elif resolution == "480p": ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([video_url])
+                    st.balloons()
+                    status_box.success(f"FILE SECURED AT: {st.session_state['download_path']}")
+                except Exception as e:
+                    status_box.error(f"DOWNLOAD ERROR: {str(e)}")
+            else:
+                st.warning("INVALID TARGET URL")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 5: EMAIL PROTOCOL
+# MODULE 6: EMAIL PROTOCOL
 # ==========================================
 elif mode == "✉️ EMAIL PROTOCOL":
     if 'email_draft' not in st.session_state:
@@ -501,6 +699,8 @@ elif mode == "✉️ EMAIL PROTOCOL":
                             st.rerun()
             
             body = st.text_area("BODY", value=st.session_state['email_draft']['body'], height=200)
+            
+            # Sync state
             st.session_state['email_draft'].update({"to": to_addr, "subject": subj, "body": body})
             
             if st.button("TRANSMIT MESSAGE", type="primary", use_container_width=True):
@@ -554,7 +754,7 @@ elif mode == "✉️ EMAIL PROTOCOL":
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 6: MESSAGING
+# MODULE 7: MESSAGING
 # ==========================================
 elif mode == "💬 MESSAGING":
     tab1, tab2, tab3, tab4 = st.tabs(["SEND", "FEED", "LOGS", "CONFIG"])
